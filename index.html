@@ -6,7 +6,6 @@
     <title>Live CCTV Bojonegoro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Efek loading sederhana */
         .loader {
             border: 4px solid #374151;
             border-top: 4px solid #3b82f6;
@@ -19,7 +18,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-        /* Style tambahan untuk iframe/video agar pas di dalam kotak */
         .cctv-frame {
             width: 100%;
             aspect-ratio: 16/9;
@@ -29,7 +27,6 @@
     </style>
 </head>
 <body class="bg-gray-900 text-gray-100 font-sans min-h-screen">
-
     <header class="bg-gray-800 shadow-md border-b border-gray-700">
         <div class="container mx-auto px-4 py-6 text-center">
             <h1 class="text-3xl font-bold tracking-tight text-white flex items-center justify-center gap-3">
@@ -41,7 +38,6 @@
     </header>
 
     <main class="container mx-auto px-4 py-8">
-        
         <div id="loading" class="flex flex-col items-center justify-center py-20">
             <div class="loader mb-4"></div>
             <p class="text-gray-400">Mengambil data CCTV...</p>
@@ -52,39 +48,31 @@
         </div>
 
         <div id="cctv-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 hidden">
-            </div>
-
+        </div>
     </main>
 
     <script>
-        const API_URL = 'https://data.bojonegorokab.go.id/api/botic/botic/cctv';
+        const API_URL = 'https://api.allorigins.win/raw?url=' + encodeURIComponent('https://data.bojonegorokab.go.id/api/botic/botic/cctv');
         const container = document.getElementById('cctv-container');
         const loading = document.getElementById('loading');
         const errorMessage = document.getElementById('error-message');
 
         async function fetchCCTVData() {
             try {
-                // Mengambil data dari API
                 const response = await fetch(API_URL);
                 if (!response.ok) throw new Error('Network response was not ok');
                 
                 const result = await response.json();
-                
-                // Catatan: Struktur data API mungkin berbeda. 
-                // Asumsi: Data CCTV ada di dalam array, misal `result.data` atau `result` langsung.
-                // Jika API me-return array langsung, gunakan "const data = result;"
                 const data = result.data || result; 
 
                 renderCCTV(data);
             } catch (error) {
-                console.error('Error fetching data:', error);
                 loading.classList.add('hidden');
                 errorMessage.classList.remove('hidden');
             }
         }
 
         function renderCCTV(cctvList) {
-            // Sembunyikan loading, tampilkan container
             loading.classList.add('hidden');
             container.classList.remove('hidden');
 
@@ -93,32 +81,22 @@
                 return;
             }
 
-            // Looping data dan buat elemen HTML
             cctvList.forEach(cctv => {
-                // Sesuaikan 'nama_lokasi' dan 'url_stream' dengan field asli dari JSON API Bojonegoro
                 const namaLokasi = cctv.nama_lokasi || cctv.name || cctv.lokasi || 'Lokasi Tidak Diketahui';
                 const urlStream = cctv.url_stream || cctv.url || cctv.link || '';
 
                 const card = document.createElement('div');
                 card.className = 'bg-gray-800 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 border border-gray-700 hover:border-blue-500 group';
 
-                // Menggunakan iframe untuk menampilkan stream (atau tag video jika formatnya mp4/m3u8)
                 card.innerHTML = `
                     <div class="relative overflow-hidden">
-                        <iframe 
-                            src="${urlStream}" 
-                            class="cctv-frame transform group-hover:scale-105 transition-transform duration-500" 
-                            allowfullscreen 
-                            loading="lazy">
-                        </iframe>
+                        <iframe src="${urlStream}" class="cctv-frame transform group-hover:scale-105 transition-transform duration-500" allowfullscreen loading="lazy"></iframe>
                         <div class="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded backdrop-blur-sm flex items-center gap-1">
                             <span class="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span> LIVE
                         </div>
                     </div>
                     <div class="p-4">
-                        <h3 class="font-semibold text-lg text-gray-100 truncate" title="${namaLokasi}">
-                            ${namaLokasi}
-                        </h3>
+                        <h3 class="font-semibold text-lg text-gray-100 truncate" title="${namaLokasi}">${namaLokasi}</h3>
                         <p class="text-gray-400 text-sm mt-1 truncate">Bojonegoro, Jawa Timur</p>
                     </div>
                 `;
@@ -127,7 +105,6 @@
             });
         }
 
-        // Panggil fungsi saat halaman dimuat
         fetchCCTVData();
     </script>
 </body>
