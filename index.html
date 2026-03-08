@@ -98,14 +98,6 @@
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        .dot-pattern {
-            background-image: radial-gradient(#94a3b8 1px, transparent 1px);
-            background-size: 16px 16px;
-        }
-        .dark .dot-pattern {
-            background-image: radial-gradient(#334155 1px, transparent 1px);
-        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-900 dark:bg-[#0b1120] dark:text-slate-200 min-h-screen transition-colors duration-300">
@@ -162,14 +154,29 @@
         </div>
 
         <section id="grid-section" class="hidden fade-in" style="animation-delay: 0.1s;">
-            <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-6 gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div class="flex flex-col md:flex-row md:items-end justify-between mb-6 gap-4 border-b border-slate-200 dark:border-slate-800 pb-4">
                 <div class="flex items-center gap-3">
                     <div class="p-2 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg text-indigo-600 dark:text-indigo-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
                     </div>
                     <h2 class="text-xl font-bold text-slate-900 dark:text-white">Daftar Titik Pantau</h2>
                 </div>
+                
+                <div class="relative w-full md:w-80">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </div>
+                    <input type="text" id="search-input" class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 dark:border-slate-700 rounded-xl leading-5 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition-colors" placeholder="Cari lokasi CCTV...">
+                </div>
             </div>
+            
+            <div id="no-results" class="hidden py-10 text-center">
+                <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 mb-4">
+                    <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                </div>
+                <p class="text-slate-500 dark:text-slate-400 font-medium">Lokasi tidak ditemukan.</p>
+            </div>
+
             <div id="cctv-container" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-5 auto-rows-max">
             </div>
         </section>
@@ -239,6 +246,8 @@
         const gridSection = document.getElementById('grid-section');
         const cctvCount = document.getElementById('cctv-count');
         const apiStatus = document.getElementById('api-status');
+        const searchInput = document.getElementById('search-input');
+        const noResults = document.getElementById('no-results');
         
         const modal = document.getElementById('video-modal');
         const modalContent = document.getElementById('modal-content');
@@ -256,6 +265,15 @@
             attribution: '&copy; OpenStreetMap contributors'
         }).addTo(map);
 
+        const thumbImages = [
+            'https://images.unsplash.com/photo-1515162816999-a0c47dc192f7?auto=format&fit=crop&q=80&w=400',
+            'https://images.unsplash.com/photo-1554223069-7ee67275e586?auto=format&fit=crop&q=80&w=400',
+            'https://images.unsplash.com/photo-1494522855154-9297ac14b55f?auto=format&fit=crop&q=80&w=400',
+            'https://images.unsplash.com/photo-1520106212299-d99c443e4568?auto=format&fit=crop&q=80&w=400',
+            'https://images.unsplash.com/photo-1623065116744-8846c4f9bc20?auto=format&fit=crop&q=80&w=400',
+            'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?auto=format&fit=crop&q=80&w=400'
+        ];
+
         async function fetchCCTVData() {
             try {
                 const response = await fetch(API_URL);
@@ -263,7 +281,13 @@
                 
                 const data = await response.json();
                 globalCCTVData = data.data || data; 
-                renderDashboardInstant();
+                
+                loading.classList.add('hidden');
+                gridSection.classList.remove('hidden');
+                cctvCount.innerText = globalCCTVData.length;
+                
+                renderMap();
+                renderGrid(globalCCTVData);
             } catch (error) {
                 loading.classList.add('hidden');
                 apiStatus.innerHTML = `<span class="w-2.5 h-2.5 bg-rose-500 rounded-full"></span> Offline`;
@@ -281,16 +305,7 @@
             }
         }
 
-        function renderDashboardInstant() {
-            loading.classList.add('hidden');
-            gridSection.classList.remove('hidden');
-
-            if (!globalCCTVData || globalCCTVData.length === 0) return;
-
-            cctvCount.innerText = globalCCTVData.length;
-
-            let htmlString = '';
-
+        function renderMap() {
             globalCCTVData.forEach((cctv, index) => {
                 const lat = parseFloat(cctv.long); 
                 const lng = parseFloat(cctv.lat);
@@ -306,19 +321,37 @@
                     
                     marker.on('click', () => openModalFromIndex(index));
                 }
+            });
+        }
+
+        function renderGrid(dataToRender) {
+            container.innerHTML = '';
+            
+            if (dataToRender.length === 0) {
+                noResults.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            } else {
+                noResults.classList.add('hidden');
+                container.classList.remove('hidden');
+            }
+
+            let htmlString = '';
+
+            dataToRender.forEach((cctv) => {
+                const originalIndex = globalCCTVData.indexOf(cctv);
+                const bgImage = thumbImages[originalIndex % thumbImages.length];
 
                 htmlString += `
-                    <div data-index="${index}" class="cctv-card-hover bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer flex flex-col relative group h-full">
-                        <div class="relative w-full aspect-video bg-slate-100 dark:bg-slate-900 flex items-center justify-center overflow-hidden dot-pattern">
+                    <div data-index="${originalIndex}" class="cctv-card-hover bg-white dark:bg-slate-800 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm cursor-pointer flex flex-col relative group h-full">
+                        <div class="relative w-full aspect-video bg-slate-900 flex items-center justify-center overflow-hidden">
                             
-                            <div class="absolute inset-0 bg-gradient-to-t from-slate-200 to-transparent dark:from-slate-900 dark:to-transparent z-0"></div>
+                            <img src="${bgImage}" class="absolute inset-0 w-full h-full object-cover opacity-70 group-hover:opacity-40 transition-opacity duration-500 group-hover:scale-105 transform z-0" loading="lazy" alt="CCTV Thumbnail">
                             
-                            <div class="relative z-10 w-14 h-14 rounded-full bg-white/90 dark:bg-slate-800/90 backdrop-blur-sm flex items-center justify-center shadow-md group-hover:scale-110 group-hover:bg-blue-600 group-hover:text-white transition-all duration-300 text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-slate-700 group-hover:border-transparent">
-                                <svg class="w-7 h-7" fill="currentColor" viewBox="0 0 24 24"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4zM15 16H5V8h10v8z"/></svg>
-                            </div>
-
-                            <div class="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20 bg-black/30 backdrop-blur-[2px]">
-                                <div class="bg-blue-600 text-white text-xs px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-500/30 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
+                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent z-10"></div>
+                            
+                            <div class="absolute inset-0 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                                <div class="bg-blue-600/90 backdrop-blur-sm text-white text-xs px-4 py-2 rounded-xl font-bold flex items-center gap-2 shadow-lg shadow-blue-500/30 transform translate-y-2 group-hover:translate-y-0 transition-all duration-300">
                                     <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> PUTAR LIVE
                                 </div>
                             </div>
@@ -336,16 +369,25 @@
             });
 
             container.innerHTML = htmlString;
-
-            container.addEventListener('click', function(e) {
-                const card = e.target.closest('.cctv-card-hover');
-                if (card) {
-                    const index = card.getAttribute('data-index');
-                    openModalFromIndex(index);
-                }
-            });
         }
-        
+
+        container.addEventListener('click', function(e) {
+            const card = e.target.closest('.cctv-card-hover');
+            if (card) {
+                const index = card.getAttribute('data-index');
+                openModalFromIndex(index);
+            }
+        });
+
+        searchInput.addEventListener('input', function(e) {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredData = globalCCTVData.filter(cctv => 
+                (cctv.lokasi && cctv.lokasi.toLowerCase().includes(searchTerm)) ||
+                (cctv.kategori && cctv.kategori.toLowerCase().includes(searchTerm))
+            );
+            renderGrid(filteredData);
+        });
+
         window.openModalFromIndex = function(index) {
             const cctv = globalCCTVData[index];
             if(cctv) openModalFromObj(cctv);
